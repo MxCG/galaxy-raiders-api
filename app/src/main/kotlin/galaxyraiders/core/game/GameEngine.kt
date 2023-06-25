@@ -6,6 +6,8 @@ import galaxyraiders.ports.ui.Controller
 import galaxyraiders.ports.ui.Controller.PlayerCommand
 import galaxyraiders.ports.ui.Visualizer
 import kotlin.system.measureTimeMillis
+import java.time.Instant
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 
 const val MILLISECONDS_PER_SECOND: Int = 1000
 
@@ -88,9 +90,21 @@ class GameEngine(
     this.field.spaceObjects.forEachPair {
         (first, second) ->
       if (first.impacts(second)) {
+        if (first is Asteroid && second is Missile) {
+          this.destroyAsteroid(first)
+        }
+
+        if (first is Missile && second is Asteroid) {
+          this.destroyAsteroid(second)
+        }
+
         first.collideWith(second, GameEngineConfig.coefficientRestitution)
       }
     }
+  }
+
+  fun destroyAsteroid(asteroid: Asteroid) {
+    this.field.explodeAsteroid(asteroid)
   }
 
   fun moveSpaceObjects() {
@@ -102,6 +116,7 @@ class GameEngine(
   fun trimSpaceObjects() {
     this.field.trimAsteroids()
     this.field.trimMissiles()
+    this.field.trimExplosions()
   }
 
   fun generateAsteroids() {
