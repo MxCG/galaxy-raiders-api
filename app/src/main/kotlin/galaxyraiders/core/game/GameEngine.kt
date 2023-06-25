@@ -8,8 +8,12 @@ import galaxyraiders.ports.ui.Visualizer
 import kotlin.system.measureTimeMillis
 import java.time.Instant
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
+import java.io.File
 
 const val MILLISECONDS_PER_SECOND: Int = 1000
+
+data class Score(val timestamp: Long, var score: Double)
 
 object GameEngineConfig {
   private val config = Config(prefix = "GR__CORE__GAME__GAME_ENGINE__")
@@ -35,7 +39,28 @@ class GameEngine(
     generator = generator
   )
 
+  val score: Score
+
+	private val scoreboardFile: File = File("src/main/kotlin/galaxyraiders/core/score/Scoreboard.json")
+	private val leaderboardFile: File = File("src/main/kotlin/galaxyraiders/core/score/Leaderboard.json")
+
+  private var scoreboard: List<Score>
+		get() = readScoresFromFile(scoreboardFile)
+		set(value) {
+			writeScoresToFile(scoreboardFile, value)
+		}
+
+  private var leaderboard: List<Score>
+		get() = readScoresFromFile(leaderboardFile)
+		set(value) {
+			writeScoresToFile(leaderboardFile, value)
+		}
+
   var playing = true
+
+  init {
+		score = Score(Instant.now().getEpochSecond(), 0.0)
+  }
 
   fun execute() {
     while (true) {
@@ -105,6 +130,8 @@ class GameEngine(
 
   fun destroyAsteroid(asteroid: Asteroid) {
     this.field.explodeAsteroid(asteroid)
+    this.score.score += asteroid.radius * asteroid.mass
+    this.saveScore()
   }
 
   fun moveSpaceObjects() {
@@ -129,6 +156,43 @@ class GameEngine(
 
   fun renderSpaceField() {
     this.visualizer.renderSpaceField(this.field)
+  }
+
+  fun saveScore() {
+		var scoreboard = this.scoreboard
+
+		scoreboard = scoreboard.filter { it.timestamp != this.score.timestamp }
+		scoreboard += this.score
+
+		this.scoreboard = scoreboard
+
+		this.leaderboard = scoreboard.sortedByDescending { it.score }.take(3)
+  }
+
+  private fun readScoresFromFile(file: File): List<Score> {
+		if (!file.exists()) {
+			return emptyList()
+		}
+
+		val fileText = file.readText()
+
+		if (fileText.isEmpty()) {
+			return emptyList()
+		}
+
+		val mapper = jacksonObjectMapper()
+
+		return mapper.readValue(fileText)
+  }
+
+  private fun writeScoresToFile(file: File, list: List<Score>) {
+		if (!file.exists()) {
+			file.createNewFile()
+		}
+
+		val mapper = jacksonObjectMapper()
+
+		file.writeText(mapper.writeValueAsString(list))
   }
 }
 

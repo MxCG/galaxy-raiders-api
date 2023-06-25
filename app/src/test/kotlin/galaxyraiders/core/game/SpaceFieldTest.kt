@@ -81,6 +81,15 @@ class SpaceFieldTest {
   }
 
   @Test
+  fun `it starts with no explosions`() {
+    assertAll(
+      "SpaceField should initialize an empty list of explosions",
+      { assertNotNull(spaceField.explosions) },
+      { assertEquals(0, spaceField.explosions.size) },
+    )
+  }
+
+  @Test
   fun `it has a list of objects with ship, missiles and asteroids`() {
     val ship = spaceField.ship
 
